@@ -36,8 +36,8 @@ with open('pkl_data/features_main.pkl', 'rb') as f:
 
 
 # Load Keras models
-model_sec = load_model('pkl_data/pred_sport_from_type_keras.h5')
-model_main = load_model('pkl_data/pred_sport_from_all1_keras.h5')
+# model_sec = load_model('pkl_data/pred_sport_from_type_keras.h5')
+# model_main = load_model('pkl_data/pred_sport_from_all1_keras.h5')
 
 # Load Sports Category Data
 gender_sort = pd.read_csv("csv_data/Sports_Cat.csv")
@@ -313,7 +313,7 @@ def create_callbacks(app):
                 x_sec_func = ordinal_sec_func.transform(pd.DataFrame({"Gender": [gender], "Team_origen": [country], "Sport_Type": [sport_type]}))
                 x_sec_func = np.concatenate((pd.DataFrame({"Age": [age], "Height": [height], "Weight": [weight]}).values, x_sec_func), axis=1)
                 x_sec_inp = scaler_sec_func.transform(x_sec_func)
-                pred = model_sec.predict(x_sec_inp)
+                # pred = model_sec.predict(x_sec_inp)
                 original_data_sec = one_hot_encoder_sec_func.inverse_transform(pred)
                 rec_s.append([original_data_sec[0][0], sport_type])
 
@@ -339,7 +339,7 @@ def create_callbacks(app):
             x_sec_func = ordinal_sec_func.transform(pd.DataFrame({"Gender": [gender], "Team_origen": [country], "Sport_Type": [sport_type_c]}))
             x_sec_func = np.concatenate((pd.DataFrame({"Age": [age], "Height": [height], "Weight": [weight]}).values, x_sec_func), axis=1)
             x_sec_inp = scaler_sec_func.transform(x_sec_func)
-            pred = model_sec.predict(x_sec_inp)
+            # pred = model_sec.predict(x_sec_inp)
 
             original_data_sec = one_hot_encoder_sec_func.inverse_transform(pred)
             out_put = original_data_sec[0][0]
