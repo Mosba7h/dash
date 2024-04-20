@@ -1,3 +1,4 @@
+# Import libraries
 import dash
 import dash_bootstrap_components as dbc
 import dash_html_components as html
@@ -7,15 +8,20 @@ import plotly.express as px
 import numpy as np
 import base64
 from olympics_predictions import predict_athlete_performance, predict_top_countries
+import pickle
 
 # Load Olympic Games dataset
 df = pd.read_csv("csv_data/olympics.csv")
 
 # Load athlete performance prediction model
 athlete_model_path = 'athlete_model.pkl'
+with open(athlete_model_path, 'rb') as f:
+    athlete_model = pickle.load(f)
 
 # Load top countries prediction model
 top_countries_model_path = 'top_countries_model.pkl'
+with open(top_countries_model_path, 'rb') as f:
+    top_countries_model = pickle.load(f)
 
 # Define app
 app = dash.Dash(external_stylesheets=[dbc.themes.SIMPLEX], suppress_callback_exceptions=True)
