@@ -1,221 +1,242 @@
-# Import libraries
+import base64
+import pickle
 import dash
 import dash_bootstrap_components as dbc
 import dash_html_components as html
-import dash_core_components as dcc
+import dash_table
+import numpy as np
 import pandas as pd
 import plotly.express as px
-import numpy as np
-import base64
-from olympics_predictions import predict_athlete_performance, predict_top_countries
-import pickle
+from dash import Input, Output, dcc, html
+from keras.models import load_model
 
-# Load Olympic Games dataset
-df = pd.read_csv("csv_data/olympics.csv")
 
-# Load athlete performance prediction model
-athlete_model_path = 'athlete_model.pkl'
-with open(athlete_model_path, 'rb') as f:
-    athlete_model = pickle.load(f)
+# Load data and models
+with open('one_hot_encoder_sec.pkl', 'rb') as f:
+    one_hot_encoder_sec_func = pickle.load(f)
 
-# Load top countries prediction model
-top_countries_model_path = 'top_countries_model.pkl'
-with open(top_countries_model_path, 'rb') as f:
-    top_countries_model = pickle.load(f)
+with open('scaler_sec.pkl', 'rb') as f:
+    scaler_sec_func = pickle.load(f)
 
-# Define app
-app = dash.Dash(external_stylesheets=[dbc.themes.SIMPLEX], suppress_callback_exceptions=True)
+with open('ordinal_sec.pkl', 'rb') as f:
+    ordinal_sec_func = pickle.load(f)
 
-# Define app layout
-app.layout = html.Div([
-    # Header
-    html.Div(
+with open('one_hot_encoder_main.pkl', 'rb') as f:
+    one_hot_encoder_main_func = pickle.load(f)
+
+with open('scaler_main.pkl', 'rb') as f:
+    scaler_main_func = pickle.load(f)
+
+with open('features_main.pkl', 'rb') as f:
+    features_main_func = pickle.load(f)
+
+# Load Keras models
+model_sec = load_model('pred_sport_from_type.keras')
+model_main = load_model('pred_sport_from_all1.keras')
+
+# Load Sports Category Data
+gender_sort = pd.read_csv("Sports_Cat.csv")
+# Load necessary files and models
+with open('one_hot_encoder_sec.pkl', 'rb') as f:
+    one_hot_encoder_sec_func = pickle.load(f)
+
+with open('scaler_sec.pkl', 'rb') as f:
+    scaler_sec_func = pickle.load(f)
+
+with open('ordinal_sec.pkl', 'rb') as f:
+    ordinal_sec_func = pickle.load(f)
+
+df = pd.read_csv("olympics_cleaned.csv")
+
+model_sec = load_model('pred_sport_from_type.keras')
+
+# Define options for dropdown menus
+age_options = [{'label': str(i), 'value': i} for i in range(15, 61)]
+weight_options = [{'label': str(i), 'value': i} for i in range(25, 201)]
+height_options = [{'label': str(i), 'value': i} for i in range(150, 251)]
+gender_options = [{'label': 'Male', 'value': 'Male'}, {'label': 'Female', 'value': 'Female'}]
+country_options = [{'label': country, 'value': country} for country in [
+    "China", "Denmark", "Netherlands", "USA", "Finland", "Norway", "Romania", "Estonia", "France", "Morocco",
+    "Spain", "Egypt", "Iran", "Bulgaria", "Italy", "Azerbaijan", "Sudan", "Russia", "Argentina", "Cuba", "Belarus",
+    "Greece", "Cameroon", "Turkey", "Chile", "Mexico", "Nicaragua", "Hungary", "Nigeria", "Chad", "Algeria", "Kuwait",
+    "Bahrain", "Pakistan", "Iraq", "Syria", "Lebanon", "Qatar", "Malaysia", "Germany", "Canada", "Ireland", "Australia",
+    "South Africa", "Eritrea", "Tanzania", "Jordan", "Tunisia", "Libya", "Belgium", "Djibouti", "Palestine", "Comoros",
+    "Kazakhstan", "Brunei", "India", "Saudi Arabia", "Maldives", "Ethiopia", "United Arab Emirates", "Yemen", "Indonesia",
+    "Philippines", "Uzbekistan", "Kyrgyzstan", "Tajikistan", "Japan", "Switzerland", "Brazil", "Monaco", "Israel", "Sweden",
+    "Virgin Islands, US", "Sri Lanka", "Armenia", "Ivory Coast", "Kenya", "Benin", "Ukraine", "UK", "Ghana", "Somalia",
+    "Latvia", "Niger", "Mali", "Poland", "Costa Rica", "Panama", "Georgia", "Slovenia", "Croatia", "Guyana", "New Zealand",
+    "Portugal", "Paraguay", "Angola", "Venezuela", "Colombia", "Bangladesh", "Peru", "Uruguay", "Puerto Rico", "Uganda",
+    "Honduras", "Ecuador", "El Salvador", "Turkmenistan", "Mauritius", "Seychelles", "Czech Republic", "Luxembourg",
+    "Mauritania", "Saint Kitts", "Trinidad", "Dominican Republic", "Saint Vincent", "Jamaica", "Liberia", "Suriname",
+    "Nepal", "Mongolia", "Austria", "Palau", "Lithuania", "Togo", "Namibia", "Curacao", "Iceland", "American Samoa",
+    "Samoa", "Rwanda", "Dominica", "Haiti", "Malta", "Cyprus", "Guinea", "Belize", "South Korea", "Bermuda", "Serbia",
+    "Sierra Leone", "Papua New Guinea", "Afghanistan", "Individual Olympic Athletes", "Oman", "Fiji", "Vanuatu", "Moldova",
+    "Bahamas", "Guatemala", "Virgin Islands, British", "Mozambique", "Central African Republic", "Madagascar",
+    "Bosnia and Herzegovina", "Guam", "Cayman Islands", "Slovakia", "Barbados", "Guinea-Bissau", "Thailand", "Timor-Leste",
+    "Democratic Republic of the Congo", "Gabon", "San Marino", "Laos", "Botswana", "North Korea", "Senegal", "Cape Verde",
+    "Equatorial Guinea", "Boliva", "Andorra", "Antigua", "Zimbabwe", "Grenada", "Saint Lucia", "Micronesia", "Myanmar",
+    "Malawi", "Zambia", "Taiwan", "Sao Tome and Principe", "Republic of Congo", "Macedonia", "Tonga", "Liechtenstein",
+    "Montenegro", "Gambia", "Solomon Islands", "Cook Islands", "Albania", "Swaziland", "Burkina Faso", "Burundi", "Aruba",
+    "Nauru", "Vietnam", "Cambodia", "Bhutan", "Marshall Islands", "Kiribati", "Kosovo", "South Sudan", "Lesotho"
+]]
+sport_type_options = [{'label': sport_type, 'value': sport_type} for sport_type in [
+    "TeamSports", "CombatSports", "WinterSports", "Athletics", "Aquatics", "RacquetSports", "WaterSports",
+    "IndividualSports", "Weightlifting", "Equestrianism", "Shooting", "Cycling", "ModernPentathlon", "Archery", "Triathlon"
+]]
+
+def image_source(img):
+    image_filename = f'assets/{img}'
+    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+    src='data:image/png;base64,{}'.format(encoded_image.decode())
+    return src
+
+
+
+def create_layout():
+    # تصميم شريط التنقل
+    navbar = dbc.Navbar(
         [
-            html.Img(src="assets/olympics.png", height="60px", style={"margin-left": "70px"}),
-            html.H1("Olympics Dashboard", className="ml-2 align-self-center", style={"font-size": "20px", "text-decoration": "none", "color": "#2D3C6B", "text-decoration": "none", "font-weight": "bold"})
-        ],
-        className="row",
-        style={"height": "80px", "width": "100%", "background-color": "#f8f9fa", "padding": "10px 20px"}
-    ),
-
-    # Navigation bar
-    dbc.Nav(
-        [
-            dbc.NavItem(dbc.NavLink(html.Img(src="assets/home.png", height="40px"), href="/", style={"padding-left": "20px"})),
-            dbc.NavItem(dbc.NavLink(html.Img(src="assets/pred.png", height="40px"), href="/pred", style={"padding-left": "20px"})),
-        ],
-        className="mr-auto",
-        navbar=True,
-        style={"padding-left": "950px", "margin-top": "10px"}
-    ),
-
-    # Body
-    html.Div(
-        [
-            # Athlete performance prediction section
-            html.Div(
-                [
-                    html.H2("Athlete Performance Prediction", className="mb-4"),
-                    html.P("Enter athlete information to predict their performance."),
-
-                    # Athlete information form
-                    dbc.Form(
+            dbc.NavbarBrand(
+                html.A(
+                    dbc.Row(
                         [
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Name", html_for="athlete-name"),
-                                    dbc.Input(id="athlete-name", placeholder="Enter athlete name"),
-                                ],
+                            dbc.Col(
+                                html.Img(src=image_source("olympics.png"), height="60px", style={"margin-left": "70px"}),
+                                style={"margin-right": "5px"},
                             ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Age", html_for="athlete-age"),
-                                    dbc.Input(id="athlete-age", placeholder="Enter athlete age", type="number"),
-                                ],
-                            ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Height (cm)", html_for="athlete-height"),
-                                    dbc.Input(id="athlete-height", placeholder="Enter athlete height", type="number"),
-                                ],
-                            ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Weight (kg)", html_for="athlete-weight"),
-                                    dbc.Input(id="athlete-weight", placeholder="Enter athlete weight", type="number"),
-                                ],
-                            ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Sport", html_for="athlete-sport"),
-                                    dbc.Select(
-                                        id="athlete-sport",
-                                        options=[{'label': sport, 'value': sport} for sport in df['Sport'].unique()],
-                                        placeholder="Select athlete sport",
-                                    ),
-                                ],
-                            ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Sex", html_for="athlete-sex"),
-                                    dbc.RadioItems(
-                                        id="athlete-sex",
-                                        options=[{'label': 'Male', 'value': 'M'}, {'label': 'Female', 'value': 'F'}],
-                                        value='M',
-                                    ),
-                                ],
-                            ),
-                            dbc.FormGroup(
-                                [
-                                    dbc.Label("Year", html_for="athlete-year"),
-                                    dbc.Input(id="athlete-year", placeholder="Enter year", type="number"),
-                                ],
-                            ),
-                            dbc.Button("Predict", id="predict-athlete-button", color="primary"),
+                            dbc.Col(html.H1("Predictions", className="ml-2 align-self-center", style={"font-size": "20px", "text-decoration": "none", "color": "#2D3C6B", "text-decoration": "none", "font-weight": "bold"})),
                         ],
+                        align="center",
                     ),
-
-                    # Prediction results
-                    html.Div(id="athlete-prediction-results", style={"margin-top": "20px"}),
-                ],
-                className="col-md-6",
+                    href="/",
+                    style={"text-decoration": "none"}
+                )
             ),
-
-            # Top countries prediction section
-            html.Div(
+            dbc.Nav(
                 [
-                    html.H2("Top Countries Prediction", className="mb-4"),
-                    html.P("Predict the top countries in terms of medal count for a given year."),
-
-                    # Year selection dropdown
-                    dcc.Dropdown(
-                        id="top-countries-year-dropdown",
-                        options=[{'label': str(year), 'value': year} for year in df['Year'].unique()],
-                        value=2024,
-                        clearable=False,
-                    ),
-
-                    # Prediction results
-                    html.Div(id="top-countries-prediction-results", style={"margin-top": "20px"}),
+                    dbc.NavItem(dbc.NavLink(html.Img(src=image_source("home.png"), height="40px"), href="/", style={"padding-left": "20px"})),
+                    dbc.NavItem(dbc.NavLink(html.Img(src=image_source("pred.png"), height="40px"), href="/", style={"padding-left": "20px"})),
                 ],
-                className="col-md-6",
+                className="mr-auto",
+                navbar=True,
+                style = {
+                    "padding-left": "950px"
+                }
             ),
         ],
-        className="row",
-        style={"margin-top": "20px"}
-    ),
-])
-
-# Define callbacks
-@app.callback(
-    [Output("athlete-prediction-results", "children"),
-     Output("top-countries-prediction-results", "children")],
-    [Input("predict-athlete-button", "n_clicks"),
-     Input("top-countries-year-dropdown", "value")]
-)
-def update_predictions(n_clicks, year):
-    """
-    Updates the prediction results based on user input.
-    """
-
-    ctx = dash.callback_context
-
-    if ctx.triggered[0]['prop_id'] == 'predict-athlete-button.n_clicks':
-        # Athlete performance prediction
-        athlete_name = dash.callback_context.inputs['athlete-name']
-        athlete_age = dash.callback_context.inputs['athlete-age']
-        athlete_height = dash.callback_context.inputs['athlete-height']
-        athlete_weight = dash.callback_context.inputs['athlete-weight']
-        athlete_sport = dash.callback_context.inputs['athlete-sport']
-        athlete_sex = dash.callback_context.inputs['athlete-sex']
-        athlete_year = dash.callback_context.inputs['athlete-year']
-
-        # Predict athlete performance
-        athlete_data = {
-            'Name': athlete_name,
-            'Age': int(athlete_age),
-            'Height': int(athlete_height),
-            'Weight': int(athlete_weight),
-            'Sport': athlete_sport,
-            'Sex': athlete_sex,
-            'Year': int(athlete_year),
+        color="light",
+        dark=False,
+        className="shadow-sm mb-5 bg-white",
+        sticky="top",
+        style={
+            "height": "80px",
+            "width": "100%", 
         }
-        predictions = predict_athlete_performance(athlete_data, athlete_model_path)
+    )
 
-        # Display prediction results
-        results = f"""
-        ## Athlete Performance Prediction Results
+    # تصميم محتوى التطبيق
+    layout = dbc.Card(
+        html.Div([
+            html.Div([
+                navbar
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Please Enter Your Data", className='display-5', style={
+                            'margin-bottom': '40px',
+                            'font_weight': 'bold',
+                            'color': 'black',
+                            'margin-top': '10px',
+                            'text-align': 'left',
+                            'font-size': '20px'
+                        }),
+                        # إضافة حقول اختيار البيانات هنا
+                    ], style={'width': '35%', 'margin-left': '32%', 'margin-right': 'auto', 'margin-top': '50px'}),
+                ]),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Predicted Sport", className='display-5', style={
+                            'margin-bottom': '40px',
+                            'font_weight': 'bold',
+                            'color': 'black',
+                            'margin-top': '10px',
+                            'text-align': 'left',
+                            'font-size': '20px'
+                        }),
+                        html.Div(id='prediction-output', style={'font-size': '20px', 'margin-top': '20px'}),
+                        html.Div(id='sport-image', style={'text-align': 'center', 'margin-top': '20px'}),
+                        html.Div(id='sport-description', style={'font-size': '16px', 'margin-top': '20px'}),
+                    ], style={'width': '35%', 'margin-left': 'auto', 'margin-right': '32%', 'margin-top': '50px'}),
+                ]),
+            ]),
+        ], style={'margin-top': '20px'})
+    )
 
-        **Name:** {athlete_name}
-        **Predicted Medal:** {predictions['Predicted Medal']}
-        **Predicted Rank:** {predictions['Predicted Rank']}
-        """
-        return results, None
+    return layout
 
-    elif ctx.triggered[0]['prop_id'] == 'top-countries-year-dropdown.value':
-        # Top countries prediction
-        top_countries = predict_top_countries(df, year, top_countries_model_path)
 
-        # Display prediction results
-        results = f"""
-        ## Top Countries Prediction Results for {year}
 
-        * {top_countries[0]}
-        * {top_countries[1]}
-        * {top_countries[2]}
-        * {top_countries[3]}
-        * {top_countries[4]}
-        * {top_countries[5]}
-        * {top_countries[6]}
-        * {top_countries[7]}
-        * {top_countries[8]}
-        * {top_countries[9]}
-        """
-        return None, results
 
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+# Define callback for prediction
+@app.callback(
+    [Output('prediction-output', 'children'),
+     Output('sport-image', 'children'),
+     Output('sport-description', 'children')],
+    [Input('predict-button', 'n_clicks')],
+    [State('age-dropdown', 'value'),
+     State('weight-dropdown', 'value'),
+     State('height-dropdown', 'value'),
+     State('gender-dropdown', 'value'),
+     State('country-dropdown', 'value'),
+     State('sport-type-dropdown', 'value')]
+)
+def predict_sport(n_clicks, age, weight, height, gender, country, sport_type):
+    if n_clicks is None:
+        return '', '', ''
     else:
-        return None, None
+        # Preprocess data
+        data = {'Age': age, 'Weight': weight, 'Height': height, 'Gender': gender, 'Country': country, 'Sport_Type': sport_type}
+        df_pred = pd.DataFrame(data, index=[0])
+        df_pred['Gender'] = ordinal_sec_func.transform(df_pred['Gender'].values.reshape(-1, 1))
+        df_pred['Country'] = one_hot_encoder_sec_func.transform(df_pred['Country'].values.reshape(-1, 1)).toarray()
+        df_pred['Sport_Type'] = one_hot_encoder_main_func.transform(df_pred['Sport_Type'].values.reshape(-1, 1)).toarray()
+        df_pred = df_pred[features_main_func]
+        df_pred = scaler_main_func.transform(df_pred)
+
+        # Predict sport using secondary and main models
+        sport_sec = model_sec.predict(df_pred)[0]
+        sport_main = model_main.predict(df_pred)[0]
+
+        # Get sport name and description
+        sport_name = gender_sort.loc[gender_sort['Code'] == sport_main, 'Sport'].values[0]
+        sport_description = gender_sort.loc[gender_sort['Code'] == sport_main, 'Description'].values[0]
+
+        # Display prediction results
+        prediction_output = f"Predicted Sport: **{sport_name}**"
+        sport_image = html.Img(src=image_source(f"{sport_name.lower()}.png"), height="200px")
+        sport_description = f"Description: {sport_description}"
+
+        return prediction_output, sport_image, sport_description
 
 # Run the app
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+
+
+
