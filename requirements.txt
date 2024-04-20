@@ -6,7 +6,6 @@ keras
 numpy
 pandas
 plotly
-tensorflow
 tensorflow_intel
 gunicorn
 scikit-learn
